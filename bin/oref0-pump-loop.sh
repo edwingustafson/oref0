@@ -160,6 +160,7 @@ function fail {
         refresh_after_bolus_or_enact
         echo "Incomplete oref0-pump-loop (pump suspended) at $(date)"
     else
+        pumphistory_daily_refresh
         maybe_mmtune
         echo "If pump and rig are close enough, this error usually self-resolves. Stand by for the next loop."
         echo Unsuccessful oref0-pump-loop at $(date)
@@ -316,6 +317,9 @@ function smb_suggest {
 
 function determine_basal {
     cat monitor/meal.json
+
+    update_glucose_noise
+
     if ( grep -q 12 settings/model.json ); then
       oref0-determine-basal monitor/iob.json monitor/temp_basal.json monitor/glucose.json settings/profile.json --auto-sens settings/autosens.json --meal monitor/meal.json --reservoir monitor/reservoir.json > enact/smb-suggested.json
     else
@@ -908,6 +912,14 @@ function compare_with_fullhistory() {
     cp monitor/full-pumphistory-24h-zoned.json monitor/full-pumphistory-24h-zoned.json.$timestamp
     cp monitor/pumphistory-24h-zoned.json monitor/pumphistory-24h-zoned.json.$timestamp
   fi
+}
+
+function update_glucose_noise() {
+    if check_pref_bool .calc_glucose_noise false; then
+      echo "Recalculating glucose noise measurement"
+      oref0-calculate-glucose-noise monitor/glucose.json > monitor/glucose.json.new
+      mv monitor/glucose.json.new monitor/glucose.json
+    fi
 }
 
 function valid_pump_settings() {
